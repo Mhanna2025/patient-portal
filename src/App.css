@@ -39,6 +39,6 @@
 
 .bg-gray-100 {
 
-  background-color: #F9F6F1;
+  background-color: #F9F6F1 !important; 
 
 }

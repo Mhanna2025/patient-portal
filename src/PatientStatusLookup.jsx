@@ -118,7 +118,7 @@ export default function PatientStatusLookup() {
                 {record.Status}
               </span>
             </p>
-            <p><strong>Picked Up?:</strong> {record.PickedUp === 'Y' ? '✅ Yes' : '❌ No'}</p>
+            <p><strong>Picked Up:</strong> {record.PickedUp === 'Y' ? '✅ Yes' : '❌ No'}</p>
           </div>
 
           <div>
