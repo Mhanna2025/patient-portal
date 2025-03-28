@@ -65,7 +65,7 @@ export default function PatientStatusLookup() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="dob">Date of Birth (YYYY-MM-DD)</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="dob">Date of Birth (MM/DD/YYY)</label>
             <input
               id="dob"
               type="text"
@@ -111,7 +111,7 @@ export default function PatientStatusLookup() {
             <h4 className="text-lg font-bold mb-3" style={{ color: '#034638' }}>💊 Prescription</h4>
             <p><strong>Rx No:</strong> {record.RxNo}</p>
             <p><strong>Drug:</strong> {record.Drug?.DrugName} {record.Drug?.Strong}</p>
-            <p><strong>Sig:</strong> {record.Sig}</p>
+            <p><strong>Instructions:</strong> {record.Sig}</p>
             <p>
               <strong>Status:</strong>{' '}
               <span className="inline-block px-3 py-1 mt-1 rounded-full text-white font-semibold" style={{ backgroundColor: '#78D64B' }}>
