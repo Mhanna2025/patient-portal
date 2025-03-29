@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import {
+  FiUser,
+  FiClipboard,
+  FiUserCheck,
+  FiDollarSign,
+  FiLock,
+  FiArrowLeft,
+  FiPhone,
+  FiCalendar,
+  FiUserPlus,
+} from 'react-icons/fi';
+import InputMask from 'react-input-mask';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function PatientStatusLookup() {
   const [form, setForm] = useState({ lastName: '', dob: '' });
@@ -19,15 +33,17 @@ export default function PatientStatusLookup() {
 
     try {
       const res = await fetch(
-        `https://prima-webhook.azurewebsites.net/lookup?lastName=${encodeURIComponent(form.lastName.trim().toUpperCase())}&dob=${encodeURIComponent(form.dob)}`
+        `https://prima-webhook.azurewebsites.net/lookup?lastName=${encodeURIComponent(
+          form.lastName.trim().toUpperCase()
+        )}&dob=${encodeURIComponent(form.dob)}`
       );
-      
+
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.message || 'Lookup failed');
       }
+
       const data = await res.json();
-      console.log('Data from backend:', data);
       setRecord(data);
     } catch (err) {
       setError(err.message || 'Something went wrong');
@@ -36,107 +52,211 @@ export default function PatientStatusLookup() {
     }
   };
 
+  const resetForm = () => {
+    setRecord(null);
+    setForm({ lastName: '', dob: '' });
+    setError('');
+  };
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Prescription Summary', 14, 20);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [['Section', 'Details']],
+      body: [
+        ['Patient Name', `${record.Patient?.FirstName} ${record.Patient?.LastName}`],
+        ['DOB', record.Patient?.DOB],
+        ['Gender', record.Patient?.Gender],
+        ['Phone', record.Patient?.Phone],
+        ['Rx No', record.RxNo],
+        ['Drug', `${record.Drug?.DrugName} ${record.Drug?.Strong}`],
+        ['Instructions', record.Sig],
+        ['Status', record.Status],
+        ['Picked Up', record.PickedUp === 'Y' ? 'Yes' : 'No'],
+        ['Prescriber', `${record.Prescriber?.FirstName} ${record.Prescriber?.LastName}`],
+        ['Clinic', record.EPrescriptionData?.PrescriberClinicName],
+        ['DEA', record.Prescriber?.DEARegNo],
+        ['NPI', record.Prescriber?.NPINo],
+        ['Insurance Paid', `$${record.PrimaryInsurancePaid}`],
+        ['Copay Paid', record.CopayPaid === 'Y' ? 'Yes' : 'No'],
+        ['Total Amount', `$${record.TotalRxAmount}`],
+      ],
+    });
+
+    doc.save('prescription-summary.pdf');
+  };
+
   return (
-    <div className="min-h-screen px-6 py-10 font-sans" style={{ backgroundColor: '#F9F6F1', fontFamily: 'Visuelt, Austin, sans-serif' }}>
-      <motion.div 
-        className="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-lg"
-        style={{ backgroundColor: '#FFFFFF' }}
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <img src="/prima-logo.png" alt="Prima Logo" className="mx-auto mb-6 w-32" />
-
-        <h2 className="text-3xl font-extrabold mb-6 text-center" style={{ color: '#034638' }}>
-          Prescription Status Lookup
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="lastName">Last Name</label>
-            <input
-              id="lastName"
-              type="text"
-              value={form.lastName}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-green-500"
-            />
+    <div
+      className="min-h-screen px-6 py-10 font-sans"
+      style={{ backgroundColor: '#F9F6F1', fontFamily: 'Visuelt, Austin, sans-serif' }}
+    >
+      {!record && (
+        <motion.div
+          className="max-w-xl mx-auto bg-white p-8 rounded-2xl shadow-lg"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <img src="/prima-logo.png" alt="Prima Logo" className="mx-auto mb-6 w-32" />
+          <div className="flex justify-center items-center gap-2 mb-4 text-green-700 text-sm">
+            <FiLock /> Secure & Encrypted Lookup
           </div>
+          <h2 className="text-3xl font-extrabold mb-6 text-center" style={{ color: '#034638' }}>
+            Prescription Status Lookup
+          </h2>
 
-          <div>
-            <label className="block text-sm font-medium mb-1" htmlFor="dob">Date of Birth (MM/DD/YYY)</label>
-            <input
-              id="dob"
-              type="text"
-              value={form.dob}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-green-500"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="lastName">
+                Last Name
+              </label>
+              <input
+                id="lastName"
+                type="text"
+                value={form.lastName}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-green-500"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 rounded-md text-white font-semibold shadow-md transition duration-200"
-            style={{ backgroundColor: '#034638' }}
-          >
-            {loading ? 'Checking...' : 'Check Status'}
-          </button>
-        </form>
+            <div>
+              <label className="block text-sm font-medium mb-1" htmlFor="dob">
+                Date of Birth (MM/DD/YYYY)
+              </label>
+              <InputMask
+                mask="99/99/9999"
+                id="dob"
+                value={form.dob}
+                onChange={handleChange}
+                required
+              >
+                {(inputProps) => (
+                  <input
+                    {...inputProps}
+                    type="text"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-green-500"
+                  />
+                )}
+              </InputMask>
+            </div>
 
-        {error && (
-          <div className="mt-4 text-red-600 text-center font-medium">{error}</div>
-        )}
-      </motion.div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-2 rounded-md text-white font-semibold shadow-md transition duration-200"
+              style={{ backgroundColor: '#034638' }}
+            >
+              {loading ? 'Checking...' : 'Check Status'}
+            </button>
+          </form>
+
+          {error && <div className="mt-4 text-red-600 text-center font-medium">{error}</div>}
+        </motion.div>
+      )}
 
       {record && (
-        <motion.div 
-          className="max-w-5xl mx-auto mt-10 p-8 rounded-2xl shadow-lg grid grid-cols-1 md:grid-cols-2 gap-8 text-sm tracking-wide leading-relaxed"
-          style={{ backgroundColor: '#FFFFFF', color: '#000000', fontFamily: 'Visuelt, Austin, sans-serif' }}
+        <motion.div
+          className="max-w-5xl mx-auto mt-6 p-8 rounded-2xl shadow-lg bg-white"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <div>
-            <h4 className="text-lg font-bold mb-3" style={{ color: '#034638' }}>👤 Patient</h4>
-            <p><strong>Name:</strong> {record.Patient?.FirstName} {record.Patient?.LastName}</p>
-            <p><strong>DOB:</strong> {record.Patient?.DOB}</p>
-            <p><strong>Gender:</strong> {record.Patient?.Gender}</p>
-            <p><strong>Phone:</strong> {record.Patient?.Phone}</p>
+          <button
+            onClick={resetForm}
+            className="mb-6 flex items-center gap-2 text-green-700 hover:underline"
+          >
+            <FiArrowLeft size={18} /> Back
+          </button>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
+              <h4 className="text-xl font-semibold mb-4 flex items-center gap-2 text-green-900">
+                <FiUser className="text-green-700 text-2xl" /> Patient
+              </h4>
+              <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <div className="font-medium text-gray-600">Name:</div>
+                <div>{record.Patient?.FirstName} {record.Patient?.LastName}</div>
+                <div className="font-medium text-gray-600">DOB:</div>
+                <div>{record.Patient?.DOB}</div>
+                <div className="font-medium text-gray-600">Gender:</div>
+                <div>{record.Patient?.Gender}</div>
+                <div className="font-medium text-gray-600">Phone:</div>
+                <div>{record.Patient?.Phone}</div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
+              <h4 className="text-xl font-semibold mb-4 flex items-center gap-2 text-green-900">
+                <FiClipboard className="text-green-700 text-2xl" /> Prescription
+              </h4>
+              <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <div className="font-medium text-gray-600">Rx No:</div>
+                <div>{record.RxNo}</div>
+                <div className="font-medium text-gray-600">Drug:</div>
+                <div>{record.Drug?.DrugName} {record.Drug?.Strong}</div>
+                <div className="font-medium text-gray-600">Instructions:</div>
+                <div>{record.Sig}</div>
+                <div className="font-medium text-gray-600">Status:</div>
+                <div>
+                  <span className="inline-block px-3 py-1 mt-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-300">
+                    {record.Status}
+                  </span>
+                </div>
+                <div className="font-medium text-gray-600">Picked Up:</div>
+                <div>{record.PickedUp === 'Y' ? '✅ Yes' : '❌ No'}</div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
+              <h4 className="text-xl font-semibold mb-4 flex items-center gap-2 text-green-900">
+                <FiUserCheck className="text-green-700 text-2xl" /> Prescriber
+              </h4>
+              <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <div className="font-medium text-gray-600">Name:</div>
+                <div>{record.Prescriber?.FirstName} {record.Prescriber?.LastName}</div>
+                <div className="font-medium text-gray-600">DEA:</div>
+                <div>{record.Prescriber?.DEARegNo}</div>
+                <div className="font-medium text-gray-600">NPI:</div>
+                <div>{record.Prescriber?.NPINo}</div>
+                <div className="font-medium text-gray-600">Clinic:</div>
+                <div>{record.EPrescriptionData?.PrescriberClinicName}</div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 shadow-sm">
+              <h4 className="text-xl font-semibold mb-4 flex items-center gap-2 text-green-900">
+                <FiDollarSign className="text-green-700 text-2xl" /> Billing
+              </h4>
+              <div className="grid grid-cols-2 gap-y-3 text-sm">
+                <div className="font-medium text-gray-600">Insurance Paid:</div>
+                <div>${record.PrimaryInsurancePaid}</div>
+                <div className="font-medium text-gray-600">Copay Paid:</div>
+                <div>{record.CopayPaid === 'Y' ? '✅ Yes' : '❌ No'}</div>
+                <div className="font-medium text-gray-600">Amount:</div>
+                <div>${record.TotalRxAmount}</div>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <h4 className="text-lg font-bold mb-3" style={{ color: '#034638' }}>💊 Prescription</h4>
-            <p><strong>Rx No:</strong> {record.RxNo}</p>
-            <p><strong>Drug:</strong> {record.Drug?.DrugName} {record.Drug?.Strong}</p>
-            <p><strong>Instructions:</strong> {record.Sig}</p>
-            <p>
-              <strong>Status:</strong>{' '}
-              <span className="inline-block px-3 py-1 mt-1 rounded-full text-white font-semibold" style={{ backgroundColor: '#78D64B' }}>
-                {record.Status}
-              </span>
-            </p>
-            <p><strong>Picked Up:</strong> {record.PickedUp === 'Y' ? '✅ Yes' : '❌ No'}</p>
-          </div>
-
-          <div>
-            <h4 className="text-lg font-bold mb-3" style={{ color: '#034638' }}>🩺 Prescriber</h4>
-            <p><strong>Name:</strong> {record.Prescriber?.FirstName} {record.Prescriber?.LastName}</p>
-            <p><strong>DEA:</strong> {record.Prescriber?.DEARegNo}</p>
-            <p><strong>NPI:</strong> {record.Prescriber?.NPINo}</p>
-            <p><strong>Clinic:</strong> {record.EPrescriptionData?.PrescriberClinicName}</p>
-          </div>
-
-          <div>
-            <h4 className="text-lg font-bold mb-3" style={{ color: '#034638' }}>💵 Billing</h4>
-            <p><strong>Insurance Paid:</strong> ${record.PrimaryInsurancePaid}</p>
-            <p><strong>Copay Paid:</strong> {record.CopayPaid === 'Y' ? '✅ Yes' : '❌ No'}</p>
-            <p><strong>Amount:</strong> ${record.TotalRxAmount}</p>
+          <div className="col-span-full text-center mt-10">
+            <button
+              onClick={downloadPDF}
+              className="px-4 py-2 bg-green-600 text-white rounded-xl shadow hover:bg-green-700"
+            >
+              Download Summary
+            </button>
           </div>
         </motion.div>
       )}
+
+      <div className="fixed bottom-4 right-4 text-xs text-gray-500 opacity-70">
+        Built by Prima • Powered by Azure • Secure
+      </div>
     </div>
   );
 }
